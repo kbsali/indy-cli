@@ -46,7 +46,28 @@ browser invalidates it.
 
 `INDY_TOKEN` (Firebase ID token, IndexedDB `firebaseLocalStorageDb` →
 `stsTokenManager.accessToken`) is still supported and sent as `Authorization: Bearer`, but
-it only works if Indy turns the internal-session flag back off.
+it only works if Indy turns the internal-session flag back off. Paste this in the DevTools
+console of a logged-in `app.indy.fr` tab to read it out (the `__Http-sid` cookie is
+HttpOnly, so it cannot be read this way — only the token can):
+
+```js
+// DevTools console, tab open on https://app.indy.fr
+const idb = (req) => new Promise((ok, ko) => {
+  req.onsuccess = () => ok(req.result);
+  req.onerror = () => ko(req.error);
+});
+const db = await idb(indexedDB.open("firebaseLocalStorageDb"));
+const rows = await idb(
+  db.transaction("firebaseLocalStorage").objectStore("firebaseLocalStorage").getAll(),
+);
+const token = rows.find((r) => r.value?.stsTokenManager?.accessToken)
+  ?.value.stsTokenManager.accessToken;
+if (!token) throw new Error("no Firebase token in IndexedDB — are you logged in?");
+copy(`export INDY_TOKEN='${token}'`); // shell line now in the clipboard
+console.log(token);
+```
+
+The token is short-lived (~1 h); re-run the snippet on `401`.
 
 `INDY_ORG_ID` is optional: the SPA only sends `x-organisation-id` when an accountant
 impersonates an organisation. For your own account the organisation comes from the session.
