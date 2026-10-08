@@ -55,7 +55,8 @@ export type SubdivisionInput = {
   amountInCents: number;
   accountingAccountNumber: string;
   tvaRate: number;
-  tvaIntracom?: { type: string; rate: number } | null;
+  // Omitted for French VAT: the API now rejects null ("must be object").
+  tvaIntracom?: { type: string; rate: number };
   tvaToBeDefined?: boolean;
   resourceLinks?: unknown[];
   editDisplay?: { amountType: "TTC" | "HT" | "TVA" };
@@ -95,7 +96,6 @@ export function parseSubdivision(spec: string): SubdivisionInput {
     amountInCents: toCents(amount),
     accountingAccountNumber: account,
     tvaRate,
-    tvaIntracom: null,
     tvaToBeDefined: false,
     resourceLinks: [],
     editDisplay: { amountType: "TTC" },
@@ -284,7 +284,7 @@ export class IndyClient {
     tvaIntracom?: unknown;
     tvaToBeDefined?: boolean;
   }): Promise<unknown> {
-    const { transactionId, subdivisionId, tvaRate, tvaIntracom = null, tvaToBeDefined = false } = input;
+    const { transactionId, subdivisionId, tvaRate, tvaIntracom, tvaToBeDefined = false } = input;
     return this.request("POST", `/transactions/${transactionId}/vat`, {
       body: { subdivisionId, tvaRate, tvaIntracom, tvaToBeDefined },
     });

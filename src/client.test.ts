@@ -30,7 +30,6 @@ test("parseSubdivision reads amount:account:rate", () => {
     amountInCents: -2533,
     accountingAccountNumber: "626100",
     tvaRate: 2000,
-    tvaIntracom: null,
     tvaToBeDefined: false,
     resourceLinks: [],
     editDisplay: { amountType: "TTC" },
