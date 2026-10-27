@@ -15,4 +15,4 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: bun test
-      - run: bunx tsc --noEmit
+      - run: bun run check

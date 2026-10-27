@@ -23,7 +23,6 @@
   "scripts": {
     "start": "bun run src/cli.ts",
     "test": "bun test",
-    "typecheck": "bun check",
     "check": "bun fmt --check && bun check",
     "fix": "bun fmt",
     "prepare": "git config core.hooksPath .githooks"
