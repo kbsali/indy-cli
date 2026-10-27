@@ -2,31 +2,34 @@
   "name": "@kbsali/indy-cli",
   "version": "0.1.0",
   "description": "CLI for the unofficial Indy web API: list/filter transactions, upload receipts, edit VAT",
-  "type": "module",
+  "keywords": [
+    "accounting",
+    "bun",
+    "cli",
+    "comptabilite",
+    "indy",
+    "tva",
+    "vat"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kbsali/indy-cli.git"
+  },
   "bin": {
     "indy": "./src/cli.ts"
   },
+  "type": "module",
   "scripts": {
     "start": "bun run src/cli.ts",
     "test": "bun test",
-    "typecheck": "bun check"
+    "typecheck": "bun check",
+    "check": "bun fmt --check && bun check",
+    "fix": "bun fmt",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
     "typescript": "^7.0.2"
-  },
-  "license": "MIT",
-  "keywords": [
-    "indy",
-    "comptabilite",
-    "accounting",
-    "cli",
-    "bun",
-    "vat",
-    "tva"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kbsali/indy-cli.git"
   }
 }

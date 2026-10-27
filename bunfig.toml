@@ -1,0 +1,6 @@
+[fmt]
+printWidth = 80
+trailingComma = "es5"
+sortImports = true
+sortPackageJson = true
+ignorePatterns = ["indy-web-api.md"]
