@@ -33,17 +33,21 @@ export function transactionsToCsv(transactions: Transaction[]): string {
       transaction.date?.slice(0, 10) ?? "",
       transaction.description ?? "",
       euros(transaction.amountInCents),
-      transaction.subdivisions.map((s) => s.accounting_account?.number ?? "").join("|"),
+      transaction.subdivisions
+        .map((s) => s.accounting_account?.number ?? "")
+        .join("|"),
       transaction.subdivisions.map((s) => rate(s.tva_rate)).join("|"),
       String(transaction.receiptIds?.length ?? 0),
       transaction.isVerified ? "oui" : "non",
-    ]),
+    ])
   );
   return [csvRow(HEADERS), ...rows].join("\n");
 }
 
 export function rate(tvaRate: number | null | undefined): string {
-  return tvaRate === null || tvaRate === undefined ? "" : `${(tvaRate / 100).toFixed(2).replace(".", ",")}%`;
+  return tvaRate === null || tvaRate === undefined
+    ? ""
+    : `${(tvaRate / 100).toFixed(2).replace(".", ",")}%`;
 }
 
 export function transactionsToTable(transactions: Transaction[]): string {
@@ -56,8 +60,12 @@ export function transactionsToTable(transactions: Transaction[]): string {
         (transaction.receiptIds?.length ? "📎" : "  ") +
           " " +
           (transaction.description ?? "").slice(0, 40).padEnd(40),
-        transaction.subdivisions.map((s) => `${s.accounting_account?.number ?? "?"} ${rate(s.tva_rate)}`).join(" | "),
-      ].join("  "),
+        transaction.subdivisions
+          .map(
+            (s) => `${s.accounting_account?.number ?? "?"} ${rate(s.tva_rate)}`
+          )
+          .join(" | "),
+      ].join("  ")
     )
     .join("\n");
 }

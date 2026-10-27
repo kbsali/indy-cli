@@ -71,7 +71,9 @@ export function buildQuery(params: Record<string, unknown>): string {
     if (values.length === 0) continue;
     const name = Array.isArray(value) ? `${key}[]` : key;
     for (const item of values) {
-      parts.push(`${encodeURIComponent(name)}=${encodeURIComponent(String(item))}`);
+      parts.push(
+        `${encodeURIComponent(name)}=${encodeURIComponent(String(item))}`
+      );
     }
   }
   return parts.length > 0 ? `?${parts.join("&")}` : "";
@@ -79,7 +81,10 @@ export function buildQuery(params: Record<string, unknown>): string {
 
 /** Euros (as typed by a human: "25,33" or "-25.33") to signed cents. */
 export function toCents(amount: string | number): number {
-  const value = typeof amount === "number" ? amount : Number.parseFloat(amount.replace(",", "."));
+  const value =
+    typeof amount === "number"
+      ? amount
+      : Number.parseFloat(amount.replace(",", "."));
   if (Number.isNaN(value)) throw new Error(`Invalid amount: ${amount}`);
   return Math.round(value * 100);
 }
@@ -88,9 +93,12 @@ export function toCents(amount: string | number): number {
 export function parseSubdivision(spec: string): SubdivisionInput {
   const [amount, account, rate] = spec.split(":");
   if (!amount || !account) {
-    throw new Error(`Invalid --line "${spec}", expected amount:accountingAccount[:tvaRate]`);
+    throw new Error(
+      `Invalid --line "${spec}", expected amount:accountingAccount[:tvaRate]`
+    );
   }
-  const tvaRate = rate === undefined || rate === "" ? 0 : Number.parseInt(rate, 10);
+  const tvaRate =
+    rate === undefined || rate === "" ? 0 : Number.parseInt(rate, 10);
   if (Number.isNaN(tvaRate)) throw new Error(`Invalid tvaRate in "${spec}"`);
   return {
     amountInCents: toCents(amount),
@@ -107,7 +115,7 @@ export class IndyError extends Error {
     readonly status: number,
     readonly method: string,
     readonly path: string,
-    readonly body: string,
+    readonly body: string
   ) {
     super(`${method} ${path} -> ${status} ${body.slice(0, 300)}`);
     this.name = "IndyError";
@@ -149,17 +157,25 @@ export class IndyClient {
 
   constructor(
     credentials: Credentials,
-    private readonly baseUrl: string = BASE_URL,
+    private readonly baseUrl: string = BASE_URL
   ) {
     if (!credentials.cookie && !credentials.token) {
-      throw new Error("Missing credentials: pass a session cookie or a Firebase ID token");
+      throw new Error(
+        "Missing credentials: pass a session cookie or a Firebase ID token"
+      );
     }
-    this.cookie = credentials.cookie ? normalizeCookie(credentials.cookie) : undefined;
+    this.cookie = credentials.cookie
+      ? normalizeCookie(credentials.cookie)
+      : undefined;
     this.token = credentials.token;
     this.organisationId = credentials.organisationId;
   }
 
-  async request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
+  async request<T>(
+    method: string,
+    path: string,
+    options: RequestOptions = {}
+  ): Promise<T> {
     const url = `${this.baseUrl}${path}${buildQuery(options.query ?? {})}`;
     const headers: Record<string, string> = {
       "x-client-app-type": "web",
@@ -187,37 +203,53 @@ export class IndyClient {
 
   // --- transactions -------------------------------------------------------
 
-  listTransactions(params: ListParams = {}, page = 1): Promise<TransactionList> {
-    return this.request<TransactionList>("GET", "/transactions/transactions-list", {
-      query: { ...params, page },
-    });
+  listTransactions(
+    params: ListParams = {},
+    page = 1
+  ): Promise<TransactionList> {
+    return this.request<TransactionList>(
+      "GET",
+      "/transactions/transactions-list",
+      {
+        query: { ...params, page },
+      }
+    );
   }
 
   /** Walks every page (30 per page) of a filtered list. */
   async listAllTransactions(params: ListParams = {}): Promise<Transaction[]> {
     const all: Transaction[] = [];
     for (let page = 1; ; page++) {
-      const { transactions, nbTransactions } = await this.listTransactions(params, page);
+      const { transactions, nbTransactions } = await this.listTransactions(
+        params,
+        page
+      );
       all.push(...transactions);
-      if (transactions.length < PAGE_SIZE || all.length >= nbTransactions) return all;
+      if (transactions.length < PAGE_SIZE || all.length >= nbTransactions)
+        return all;
     }
   }
 
   /** No id-filtered endpoint exists: try the accounting route, else scan the list. */
-  async getTransaction(transactionId: string, params: ListParams = {}): Promise<Transaction> {
+  async getTransaction(
+    transactionId: string,
+    params: ListParams = {}
+  ): Promise<Transaction> {
     try {
-      const result = await this.request<{ transaction?: Transaction } | Transaction>(
-        "GET",
-        `/accounting/transactions/${transactionId}`,
-      );
-      const transaction = "transaction" in result ? result.transaction : (result as Transaction);
+      const result = await this.request<
+        { transaction?: Transaction } | Transaction
+      >("GET", `/accounting/transactions/${transactionId}`);
+      const transaction =
+        "transaction" in result ? result.transaction : (result as Transaction);
       if (transaction?._id) return transaction;
     } catch (error) {
       if (!(error instanceof IndyError)) throw error;
     }
     for (let page = 1; ; page++) {
       const { transactions } = await this.listTransactions(params, page);
-      const found = transactions.find((transaction) => transaction._id === transactionId);
+      const found = transactions.find(
+        (transaction) => transaction._id === transactionId
+      );
       if (found) return found;
       if (transactions.length < PAGE_SIZE) {
         throw new Error(`Transaction ${transactionId} not found`);
@@ -233,14 +265,18 @@ export class IndyClient {
     return this.request("POST", "/accounting/transactions/summary", { body });
   }
 
-  vatConfiguration(date: string): Promise<{ isLiable: boolean; tvaFrequency: string }> {
+  vatConfiguration(
+    date: string
+  ): Promise<{ isLiable: boolean; tvaFrequency: string }> {
     return this.request("GET", "/vat/configuration", { query: { date } });
   }
 
   // --- receipts -----------------------------------------------------------
 
   receiptsFor(transactionId: string): Promise<{ receipts: unknown[] }> {
-    return this.request("GET", "/receipts/transaction", { query: { transactionId } });
+    return this.request("GET", "/receipts/transaction", {
+      query: { transactionId },
+    });
   }
 
   async uploadReceipt(transactionId: string, file: File): Promise<unknown> {
@@ -253,7 +289,11 @@ export class IndyClient {
     });
   }
 
-  attachReceipt(receiptId: string, transactionId: string, applyReceiptData = false): Promise<unknown> {
+  attachReceipt(
+    receiptId: string,
+    transactionId: string,
+    applyReceiptData = false
+  ): Promise<unknown> {
     return this.request("PUT", `/receipts/${receiptId}/transaction`, {
       body: { transactionId, applyReceiptData },
     });
@@ -268,7 +308,10 @@ export class IndyClient {
   }
 
   applyReceiptData(receiptId: string): Promise<unknown> {
-    return this.request("PUT", `/receipts/${receiptId}/apply-receipt-data-to-transaction`);
+    return this.request(
+      "PUT",
+      `/receipts/${receiptId}/apply-receipt-data-to-transaction`
+    );
   }
 
   unpairedReceipts(): Promise<unknown> {
@@ -284,7 +327,13 @@ export class IndyClient {
     tvaIntracom?: unknown;
     tvaToBeDefined?: boolean;
   }): Promise<unknown> {
-    const { transactionId, subdivisionId, tvaRate, tvaIntracom, tvaToBeDefined = false } = input;
+    const {
+      transactionId,
+      subdivisionId,
+      tvaRate,
+      tvaIntracom,
+      tvaToBeDefined = false,
+    } = input;
     return this.request("POST", `/transactions/${transactionId}/vat`, {
       body: { subdivisionId, tvaRate, tvaIntracom, tvaToBeDefined },
     });
@@ -300,7 +349,7 @@ export class IndyClient {
       annotation?: string;
       isVerified?: boolean;
     },
-    subdivisions: SubdivisionInput[],
+    subdivisions: SubdivisionInput[]
   ): Promise<unknown> {
     return this.request("POST", `/transactions/manual/${transactionId}`, {
       body: {

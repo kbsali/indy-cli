@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
-import { parseArgs } from "node:util";
 import { basename } from "node:path";
+import { parseArgs } from "node:util";
+
 import {
+  type Credentials,
   IndyClient,
   IndyError,
-  parseSubdivision,
-  toCents,
-  type Credentials,
   type ListParams,
+  parseSubdivision,
   type SubdivisionInput,
+  toCents,
 } from "./client.ts";
 import { transactionsToCsv, transactionsToTable } from "./format.ts";
 
@@ -118,7 +119,7 @@ function resolveCredentials(): Credentials {
     throw new Error(
       "No credentials. Set INDY_COOKIE to the value of the __Http-sid cookie of a logged-in\n" +
         "app.indy.fr session (DevTools → Application → Cookies). INDY_TOKEN (Firebase ID token)\n" +
-        "only works while the enableClientInternalAuthSession flag is off.",
+        "only works while the enableClientInternalAuthSession flag is off."
     );
   }
   return { cookie, token, organisationId: process.env.INDY_ORG_ID };
@@ -130,8 +131,12 @@ function listParams(flags: Flags): ListParams {
   if (flags.category?.length) params.categories = flags.category;
   if (flags.from) params.dateFrom = flags.from;
   if (flags.to) params.dateTo = flags.to;
-  if (flags["amount-from"]) params.amountFrom = Number.parseFloat(flags["amount-from"].replace(",", "."));
-  if (flags["amount-to"]) params.amountTo = Number.parseFloat(flags["amount-to"].replace(",", "."));
+  if (flags["amount-from"])
+    params.amountFrom = Number.parseFloat(
+      flags["amount-from"].replace(",", ".")
+    );
+  if (flags["amount-to"])
+    params.amountTo = Number.parseFloat(flags["amount-to"].replace(",", "."));
   if (flags["no-receipt"]) params.hasReceipt = false;
   if (flags["with-receipt"]) params.hasReceipt = true;
   if (flags.income) params.displayIngressOutflow = "ingress";
@@ -139,18 +144,29 @@ function listParams(flags: Flags): ListParams {
   if (flags.verified) params.verified = "yes";
   if (flags.unverified) params.verified = "no";
   if (flags.deleted) params.deleted = flags.deleted as ListParams["deleted"];
-  if (flags["vat-rate"]?.length) params.vatRate = flags["vat-rate"].map((r) => Number.parseInt(r, 10));
+  if (flags["vat-rate"]?.length)
+    params.vatRate = flags["vat-rate"].map((r) => Number.parseInt(r, 10));
   return params;
 }
 
-function output(flags: Flags, data: unknown, transactions?: Parameters<typeof transactionsToCsv>[0]) {
-  if (flags.csv && transactions) return console.log(transactionsToCsv(transactions));
-  if (flags.json || !transactions) return console.log(JSON.stringify(data, null, 2));
+function output(
+  flags: Flags,
+  data: unknown,
+  transactions?: Parameters<typeof transactionsToCsv>[0]
+) {
+  if (flags.csv && transactions)
+    return console.log(transactionsToCsv(transactions));
+  if (flags.json || !transactions)
+    return console.log(JSON.stringify(data, null, 2));
   console.log(transactionsToTable(transactions));
 }
 
 async function main(argv: string[]) {
-  const { values, positionals } = parseArgs({ args: argv, options, allowPositionals: true });
+  const { values, positionals } = parseArgs({
+    args: argv,
+    options,
+    allowPositionals: true,
+  });
   const flags = values as Flags;
   const [command, ...args] = positionals;
 
@@ -171,7 +187,9 @@ async function main(argv: string[]) {
       const page = flags.page ? Number.parseInt(flags.page, 10) : 1;
       const result = await client.listTransactions(params, page);
       if (!flags.json && !flags.csv) {
-        console.error(`${result.transactions.length} shown / ${result.nbTransactions} matching`);
+        console.error(
+          `${result.transactions.length} shown / ${result.nbTransactions} matching`
+        );
       }
       return output(flags, result, result.transactions);
     }
@@ -179,14 +197,20 @@ async function main(argv: string[]) {
     case "get": {
       const [transactionId] = args;
       if (!transactionId) throw new Error("Usage: indy get <transactionId>");
-      const transaction = await client.getTransaction(transactionId, listParams(flags));
+      const transaction = await client.getTransaction(
+        transactionId,
+        listParams(flags)
+      );
       return output(flags, transaction, flags.csv ? [transaction] : undefined);
     }
 
     case "receipts": {
       const [transactionId] = args;
-      if (!transactionId) throw new Error("Usage: indy receipts <transactionId>");
-      return console.log(JSON.stringify(await client.receiptsFor(transactionId), null, 2));
+      if (!transactionId)
+        throw new Error("Usage: indy receipts <transactionId>");
+      return console.log(
+        JSON.stringify(await client.receiptsFor(transactionId), null, 2)
+      );
     }
 
     case "upload": {
@@ -208,43 +232,62 @@ async function main(argv: string[]) {
 
     case "attach": {
       const [receiptId, transactionId] = args;
-      if (!receiptId || !transactionId) throw new Error("Usage: indy attach <receiptId> <transactionId>");
-      return console.log(JSON.stringify(await client.attachReceipt(receiptId, transactionId), null, 2));
+      if (!receiptId || !transactionId)
+        throw new Error("Usage: indy attach <receiptId> <transactionId>");
+      return console.log(
+        JSON.stringify(
+          await client.attachReceipt(receiptId, transactionId),
+          null,
+          2
+        )
+      );
     }
 
     case "detach": {
       const [receiptId] = args;
       if (!receiptId) throw new Error("Usage: indy detach <receiptId>");
-      return console.log(JSON.stringify(await client.detachReceipt(receiptId), null, 2));
+      return console.log(
+        JSON.stringify(await client.detachReceipt(receiptId), null, 2)
+      );
     }
 
     case "delete-receipt": {
       const [receiptId] = args;
       if (!receiptId) throw new Error("Usage: indy delete-receipt <receiptId>");
-      return console.log(JSON.stringify(await client.deleteReceipt(receiptId), null, 2));
+      return console.log(
+        JSON.stringify(await client.deleteReceipt(receiptId), null, 2)
+      );
     }
 
     case "apply-receipt": {
       const [receiptId] = args;
       if (!receiptId) throw new Error("Usage: indy apply-receipt <receiptId>");
-      return console.log(JSON.stringify(await client.applyReceiptData(receiptId), null, 2));
+      return console.log(
+        JSON.stringify(await client.applyReceiptData(receiptId), null, 2)
+      );
     }
 
     case "unpaired":
-      return console.log(JSON.stringify(await client.unpairedReceipts(), null, 2));
+      return console.log(
+        JSON.stringify(await client.unpairedReceipts(), null, 2)
+      );
 
     case "vat": {
       const [transactionId] = args;
       if (!transactionId || !flags.rate) {
-        throw new Error("Usage: indy vat <transactionId> --rate <basis points> [--subdivision <id>]");
+        throw new Error(
+          "Usage: indy vat <transactionId> --rate <basis points> [--subdivision <id>]"
+        );
       }
       let subdivisionId = flags.subdivision;
       if (!subdivisionId) {
         const transaction = await client.getTransaction(transactionId);
-        const modifiable = transaction.subdivisions.filter((s) => s.modifiable !== false);
+        const modifiable = transaction.subdivisions.filter(
+          (s) => s.modifiable !== false
+        );
         if (modifiable.length !== 1) {
           throw new Error(
-            `Transaction has ${modifiable.length} modifiable subdivisions, pass --subdivision <id> (use \`indy get\`)`,
+            `Transaction has ${modifiable.length} modifiable subdivisions, pass --subdivision <id> (use \`indy get\`)`
           );
         }
         subdivisionId = modifiable[0]!.id;
@@ -261,15 +304,19 @@ async function main(argv: string[]) {
     case "split": {
       const [transactionId] = args;
       if (!transactionId || !flags.line?.length) {
-        throw new Error("Usage: indy split <transactionId> --line <amount:account[:rate]> [--line ...]");
+        throw new Error(
+          "Usage: indy split <transactionId> --line <amount:account[:rate]> [--line ...]"
+        );
       }
       const subdivisions: SubdivisionInput[] = flags.line.map(parseSubdivision);
       const current = await client.getTransaction(transactionId);
-      const amountInCents = flags.amount ? toCents(flags.amount) : current.amountInCents;
+      const amountInCents = flags.amount
+        ? toCents(flags.amount)
+        : current.amountInCents;
       const total = subdivisions.reduce((sum, s) => sum + s.amountInCents, 0);
       if (total !== amountInCents && !flags.force) {
         throw new Error(
-          `Subdivisions sum to ${total} cents but the transaction is ${amountInCents} cents. Fix the lines or pass --force.`,
+          `Subdivisions sum to ${total} cents but the transaction is ${amountInCents} cents. Fix the lines or pass --force.`
         );
       }
       const result = await client.updateTransaction(
@@ -281,7 +328,7 @@ async function main(argv: string[]) {
           annotation: flags.annotation ?? "",
           isVerified: flags.verified ?? current.isVerified,
         },
-        subdivisions,
+        subdivisions
       );
       return console.log(JSON.stringify(result, null, 2));
     }
@@ -291,7 +338,9 @@ async function main(argv: string[]) {
 
     case "vat-config": {
       const date = flags.date ?? new Date().toISOString().slice(0, 10);
-      return console.log(JSON.stringify(await client.vatConfiguration(date), null, 2));
+      return console.log(
+        JSON.stringify(await client.vatConfiguration(date), null, 2)
+      );
     }
 
     default:
@@ -302,7 +351,7 @@ async function main(argv: string[]) {
 main(Bun.argv.slice(2)).catch((error: unknown) => {
   if (error instanceof IndyError && error.status === 401) {
     console.error(
-      "401 Unauthorized — refresh INDY_COOKIE from a logged-in browser session (see README).",
+      "401 Unauthorized — refresh INDY_COOKIE from a logged-in browser session (see README)."
     );
   } else {
     console.error(error instanceof Error ? error.message : String(error));

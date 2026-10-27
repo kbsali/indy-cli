@@ -26,14 +26,14 @@ flowchart LR
 ```
 
 The cookie is named **`__Http-sid`**. Grab its value in DevTools →
-*Application* → *Storage* → *Cookies* → `https://app.indy.fr` → `__Http-sid`:
+_Application_ → _Storage_ → _Cookies_ → `https://app.indy.fr` → `__Http-sid`:
 
 ```bash
 export INDY_COOKIE='<__Http-sid value>'
 ```
 
 The value alone is enough; `__Http-sid=<value>` or a whole `Cookie:` header pasted from
-*Network → Copy as cURL* are accepted too.
+_Network → Copy as cURL_ are accepted too.
 
 Persist it in the OS keyring instead of the environment if you prefer:
 
@@ -52,17 +52,22 @@ HttpOnly, so it cannot be read this way — only the token can):
 
 ```js
 // DevTools console, tab open on https://app.indy.fr
-const idb = (req) => new Promise((ok, ko) => {
-  req.onsuccess = () => ok(req.result);
-  req.onerror = () => ko(req.error);
-});
+const idb = (req) =>
+  new Promise((ok, ko) => {
+    req.onsuccess = () => ok(req.result);
+    req.onerror = () => ko(req.error);
+  });
 const db = await idb(indexedDB.open("firebaseLocalStorageDb"));
 const rows = await idb(
-  db.transaction("firebaseLocalStorage").objectStore("firebaseLocalStorage").getAll(),
+  db
+    .transaction("firebaseLocalStorage")
+    .objectStore("firebaseLocalStorage")
+    .getAll()
 );
-const token = rows.find((r) => r.value?.stsTokenManager?.accessToken)
-  ?.value.stsTokenManager.accessToken;
-if (!token) throw new Error("no Firebase token in IndexedDB — are you logged in?");
+const token = rows.find((r) => r.value?.stsTokenManager?.accessToken)?.value
+  .stsTokenManager.accessToken;
+if (!token)
+  throw new Error("no Firebase token in IndexedDB — are you logged in?");
 copy(`export INDY_TOKEN='${token}'`); // shell line now in the clipboard
 console.log(token);
 ```
@@ -115,11 +120,11 @@ Notes:
 
 ## Layout
 
-| File | Role |
-|---|---|
-| `src/client.ts` | HTTP client, endpoint methods, query/amount helpers |
-| `src/format.ts` | CSV (`;`) and aligned-text rendering |
-| `src/cli.ts` | argument parsing and commands |
+| File                 | Role                                                  |
+| -------------------- | ----------------------------------------------------- |
+| `src/client.ts`      | HTTP client, endpoint methods, query/amount helpers   |
+| `src/format.ts`      | CSV (`;`) and aligned-text rendering                  |
+| `src/cli.ts`         | argument parsing and commands                         |
 | `src/client.test.ts` | `bun test` — query serialization, amount parsing, CSV |
 
 Unofficial API: Indy can change routes and payloads without notice.

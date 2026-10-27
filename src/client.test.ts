@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
-import { buildQuery, normalizeCookie, parseSubdivision, toCents } from "./client.ts";
-import { csvRow, euros, rate, transactionsToCsv } from "./format.ts";
+
+import {
+  buildQuery,
+  normalizeCookie,
+  parseSubdivision,
+  toCents,
+} from "./client.ts";
 import type { Transaction } from "./client.ts";
+import { csvRow, euros, rate, transactionsToCsv } from "./format.ts";
 
 test("buildQuery serializes arrays with brackets and skips empties", () => {
   const query = buildQuery({
@@ -14,7 +20,7 @@ test("buildQuery serializes arrays with brackets and skips empties", () => {
     none: [],
   });
   expect(query).toBe(
-    "?page=1&search=free&categories%5B%5D=626100&categories%5B%5D=613200&hasReceipt=false",
+    "?page=1&search=free&categories%5B%5D=626100&categories%5B%5D=613200&hasReceipt=false"
   );
 });
 
@@ -41,7 +47,9 @@ test("parseSubdivision reads amount:account:rate", () => {
 test("normalizeCookie accepts a bare value, a pair, or a pasted header", () => {
   expect(normalizeCookie("  abc123 ")).toBe("__Http-sid=abc123");
   expect(normalizeCookie("__Http-sid=abc123")).toBe("__Http-sid=abc123");
-  expect(normalizeCookie("Cookie: __Http-sid=abc123; _ga=x")).toBe("__Http-sid=abc123; _ga=x");
+  expect(normalizeCookie("Cookie: __Http-sid=abc123; _ga=x")).toBe(
+    "__Http-sid=abc123; _ga=x"
+  );
 });
 
 test("csv uses ; and decimal commas, quoting cells that contain the delimiter", () => {
@@ -71,6 +79,10 @@ test("transactionsToCsv emits a header plus one row per transaction", () => {
     },
   ];
   const [header, row] = transactionsToCsv(transactions).split("\n");
-  expect(header).toBe("id;date;description;montant;categories;tva;justificatifs;verifiee");
-  expect(row).toBe("abc;2025-10-06;Abonnement internet;-29,99;626100;20,00%;1;non");
+  expect(header).toBe(
+    "id;date;description;montant;categories;tva;justificatifs;verifiee"
+  );
+  expect(row).toBe(
+    "abc;2025-10-06;Abonnement internet;-29,99;626100;20,00%;1;non"
+  );
 });
