@@ -9,7 +9,7 @@
   "scripts": {
     "start": "bun run src/cli.ts",
     "test": "bun test",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bun check"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
