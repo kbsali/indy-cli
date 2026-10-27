@@ -80,8 +80,8 @@ impersonates an organisation. For your own account the organisation comes from t
 ## Commands
 
 ```bash
-# Transactions without a receipt, first quarter, as a ;-separated CSV
-indy list --no-receipt --from 2026-01-01 --to 2026-03-31 --all --csv > sans-justificatif.csv
+# Transactions without a receipt, first quarter, as TSV
+indy list --no-receipt --from 2026-01-01 --to 2026-03-31 --all --tsv > sans-justificatif.tsv
 
 # Same list, paged, aligned text (default)
 indy list --no-receipt --page 2
@@ -115,7 +115,7 @@ Notes:
 - **Amounts are signed euros** on the command line (expenses negative), converted to cents
   for the API. `split` refuses to send lines that do not sum to the transaction amount
   unless `--force` is passed.
-- CSV output uses `;` and decimal commas, so it opens straight in a FR-locale Excel/Sheets.
+- TSV output (tab-separated, decimal commas) opens as a table in Sheets, DuckDB or Zed.
 - `--all` walks every page (30 transactions per request).
 
 ## Layout
@@ -123,9 +123,9 @@ Notes:
 | File                 | Role                                                  |
 | -------------------- | ----------------------------------------------------- |
 | `src/client.ts`      | HTTP client, endpoint methods, query/amount helpers   |
-| `src/format.ts`      | CSV (`;`) and aligned-text rendering                  |
+| `src/format.ts`      | TSV and aligned-text rendering                        |
 | `src/cli.ts`         | argument parsing and commands                         |
-| `src/client.test.ts` | `bun test` — query serialization, amount parsing, CSV |
+| `src/client.test.ts` | `bun test` — query serialization, amount parsing, TSV |
 
 Unofficial API: Indy can change routes and payloads without notice.
 

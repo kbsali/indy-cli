@@ -172,12 +172,13 @@ Two paths, depending on the granularity.
 `POST /api/transactions/:transactionId/vat`
 
 ```json
-{ "subdivisionId": "<id>", "tvaRate": 2000, "tvaIntracom": null, "tvaToBeDefined": false }
+{ "subdivisionId": "<id>", "tvaRate": 2000, "tvaToBeDefined": false }
 ```
 
 `tvaRate` is in **basis points** (2000 = 20 %, 1000 = 10 %, 550 = 5,5 %, 0 = exonéré).
 `tvaToBeDefined: true` is the "TVA à définir" state; `tvaIntracom` carries
-`{ type, rate }` for intracom operations.
+`{ type, rate }` for intracom operations. Omit it for French VAT: since
+2026-10 the API rejects `null` with `400 body/tvaIntracom must be object`.
 
 ### 3b. Full edit — description, date, amount, annotation, and the whole VAT split
 
@@ -195,10 +196,10 @@ used for bank transactions too, not only manual ones)
   },
   "subdivisions": [
     { "amountInCents": -2500, "accountingAccountNumber": "626100", "tvaRate": 2000,
-      "tvaIntracom": null, "tvaToBeDefined": false, "resourceLinks": [],
+      "tvaToBeDefined": false, "resourceLinks": [],
       "editDisplay": { "amountType": "TTC" } },
     { "amountInCents": -499,  "accountingAccountNumber": "626100", "tvaRate": 1000,
-      "tvaIntracom": null, "tvaToBeDefined": false, "resourceLinks": [],
+      "tvaToBeDefined": false, "resourceLinks": [],
       "editDisplay": { "amountType": "TTC" } }
   ]
 }

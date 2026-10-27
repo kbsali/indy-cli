@@ -1,6 +1,6 @@
 /**
  * Minimal client for the (unofficial) Indy web API.
- * Endpoints documented in ../../indy-web-api.md
+ * Endpoints documented in ../indy-web-api.md
  */
 
 export const BASE_URL = "https://app.indy.fr/api";
@@ -142,7 +142,7 @@ export function normalizeCookie(raw: string): string {
 }
 
 export type Credentials = {
-  /** Session cookie header value, e.g. "indy_session=…". Preferred: this is what the SPA uses. */
+  /** Session cookie header value, e.g. "__Http-sid=…". Preferred: this is what the SPA uses. */
   cookie?: string;
   /** Firebase ID token. Only accepted while `enableClientInternalAuthSession` is off. */
   token?: string;

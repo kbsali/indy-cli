@@ -11,7 +11,7 @@ import {
   type SubdivisionInput,
   toCents,
 } from "./client.ts";
-import { transactionsToCsv, transactionsToTable } from "./format.ts";
+import { transactionsToTable, transactionsToTsv } from "./format.ts";
 
 const USAGE = `indy — CLI for the Indy web API
 
@@ -41,7 +41,7 @@ List filters:
   --deleted <yes|no|both>  --vat-rate <basis points>  (repeatable, 2000 = 20 %)
   --page <n>               --all
 Output:
-  --json | --csv           (default: aligned text)
+  --json | --tsv           (default: aligned text)
 
 vat options:
   --rate <basis points>    2000 = 20 %, 0 = exonéré  (required)
@@ -80,7 +80,7 @@ const options = {
   page: { type: "string" },
   all: { type: "boolean" },
   json: { type: "boolean" },
-  csv: { type: "boolean" },
+  tsv: { type: "boolean" },
   rate: { type: "string" },
   subdivision: { type: "string" },
   "to-be-defined": { type: "boolean" },
@@ -152,10 +152,10 @@ function listParams(flags: Flags): ListParams {
 function output(
   flags: Flags,
   data: unknown,
-  transactions?: Parameters<typeof transactionsToCsv>[0]
+  transactions?: Parameters<typeof transactionsToTsv>[0]
 ) {
-  if (flags.csv && transactions)
-    return console.log(transactionsToCsv(transactions));
+  if (flags.tsv && transactions)
+    return console.log(transactionsToTsv(transactions));
   if (flags.json || !transactions)
     return console.log(JSON.stringify(data, null, 2));
   console.log(transactionsToTable(transactions));
@@ -186,7 +186,7 @@ async function main(argv: string[]) {
       }
       const page = flags.page ? Number.parseInt(flags.page, 10) : 1;
       const result = await client.listTransactions(params, page);
-      if (!flags.json && !flags.csv) {
+      if (!flags.json && !flags.tsv) {
         console.error(
           `${result.transactions.length} shown / ${result.nbTransactions} matching`
         );
@@ -201,7 +201,7 @@ async function main(argv: string[]) {
         transactionId,
         listParams(flags)
       );
-      return output(flags, transaction, flags.csv ? [transaction] : undefined);
+      return output(flags, transaction, flags.tsv ? [transaction] : undefined);
     }
 
     case "receipts": {
