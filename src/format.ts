@@ -1,18 +1,18 @@
 import type { Transaction } from "./client.ts";
 
-/** Amounts are printed with a decimal comma, so CSV is `;`-separated. */
-export const CSV_DELIMITER = ";";
+/** Tab-separated: never collides with the decimal comma of amounts. */
+export const TSV_DELIMITER = "\t";
 
 export function euros(amountInCents: number): string {
   return (amountInCents / 100).toFixed(2).replace(".", ",");
 }
 
-export function csvCell(value: string): string {
-  return /[";\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+export function tsvCell(value: string): string {
+  return /["\t\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-export function csvRow(cells: string[]): string {
-  return cells.map(csvCell).join(CSV_DELIMITER);
+export function tsvRow(cells: string[]): string {
+  return cells.map(tsvCell).join(TSV_DELIMITER);
 }
 
 const HEADERS = [
@@ -26,9 +26,9 @@ const HEADERS = [
   "verifiee",
 ];
 
-export function transactionsToCsv(transactions: Transaction[]): string {
+export function transactionsToTsv(transactions: Transaction[]): string {
   const rows = transactions.map((transaction) =>
-    csvRow([
+    tsvRow([
       transaction._id,
       transaction.date?.slice(0, 10) ?? "",
       transaction.description ?? "",
@@ -41,7 +41,7 @@ export function transactionsToCsv(transactions: Transaction[]): string {
       transaction.isVerified ? "oui" : "non",
     ])
   );
-  return [csvRow(HEADERS), ...rows].join("\n");
+  return [tsvRow(HEADERS), ...rows].join("\n");
 }
 
 export function rate(tvaRate: number | null | undefined): string {

@@ -7,7 +7,7 @@ import {
   toCents,
 } from "./client.ts";
 import type { Transaction } from "./client.ts";
-import { csvRow, euros, rate, transactionsToCsv } from "./format.ts";
+import { euros, rate, transactionsToTsv, tsvRow } from "./format.ts";
 
 test("buildQuery serializes arrays with brackets and skips empties", () => {
   const query = buildQuery({
@@ -52,13 +52,13 @@ test("normalizeCookie accepts a bare value, a pair, or a pasted header", () => {
   );
 });
 
-test("csv uses ; and decimal commas, quoting cells that contain the delimiter", () => {
+test("tsv uses tabs and decimal commas, quoting cells that contain a tab", () => {
   expect(euros(-2999)).toBe("-29,99");
   expect(rate(550)).toBe("5,50%");
-  expect(csvRow(["a", "b;c", 'say "hi"'])).toBe('a;"b;c";"say ""hi"""');
+  expect(tsvRow(["a", "b\tc", "29,99"])).toBe('a\t"b\tc"\t29,99');
 });
 
-test("transactionsToCsv emits a header plus one row per transaction", () => {
+test("transactionsToTsv emits a header plus one row per transaction", () => {
   const transactions: Transaction[] = [
     {
       _id: "abc",
@@ -78,11 +78,11 @@ test("transactionsToCsv emits a header plus one row per transaction", () => {
       ],
     },
   ];
-  const [header, row] = transactionsToCsv(transactions).split("\n");
+  const [header, row] = transactionsToTsv(transactions).split("\n");
   expect(header).toBe(
-    "id;date;description;montant;categories;tva;justificatifs;verifiee"
+    "id\tdate\tdescription\tmontant\tcategories\ttva\tjustificatifs\tverifiee"
   );
   expect(row).toBe(
-    "abc;2025-10-06;Abonnement internet;-29,99;626100;20,00%;1;non"
+    "abc\t2025-10-06\tAbonnement internet\t-29,99\t626100\t20,00%\t1\tnon"
   );
 });
