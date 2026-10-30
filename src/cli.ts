@@ -2,6 +2,7 @@
 import { basename } from "node:path";
 import { parseArgs } from "node:util";
 
+import { type Browser, browserCookie } from "./browser-cookie.ts";
 import {
   type Credentials,
   IndyClient,
@@ -54,10 +55,13 @@ split options:
   --verified            mark the transaction as verified
   --force               skip the "subdivisions must sum to the amount" check
 
-Auth:
-  INDY_COOKIE    __Http-sid value of a logged-in app.indy.fr session — the bare value,
-                 "__Http-sid=<value>" or a whole Cookie header all work
-                 (else: keyring get indy-compta cookie)
+Auth: the __Http-sid cookie of the browser session logged in on app.indy.fr,
+read from the Chromium cookie store (Linux, libsecret). Overrides:
+  INDY_COOKIE    __Http-sid value — the bare value, "__Http-sid=<value>" or a
+                 whole Cookie header all work
+  INDY_BROWSER   chromium (default) | chrome
+  INDY_PROFILE   browser profile directory, default: Default
+  (last resort: keyring get indy-compta cookie)
   INDY_TOKEN     Firebase ID token — only works if enableClientInternalAuthSession is off
   INDY_ORG_ID    organisation id, sent as x-organisation-id (accountant impersonation only)
 `;
@@ -113,12 +117,21 @@ function fromKeyring(key: string): string | undefined {
 }
 
 function resolveCredentials(): Credentials {
-  const cookie = process.env.INDY_COOKIE?.trim() || fromKeyring("cookie");
+  const cookie =
+    process.env.INDY_COOKIE?.trim() ||
+    browserCookie(
+      "app.indy.fr",
+      "__Http-sid",
+      (process.env.INDY_BROWSER ?? "chromium") as Browser,
+      process.env.INDY_PROFILE
+    ) ||
+    fromKeyring("cookie");
   const token = process.env.INDY_TOKEN?.trim() || fromKeyring("token");
   if (!cookie && !token) {
     throw new Error(
-      "No credentials. Set INDY_COOKIE to the value of the __Http-sid cookie of a logged-in\n" +
-        "app.indy.fr session (DevTools → Application → Cookies). INDY_TOKEN (Firebase ID token)\n" +
+      "No credentials. Log in on app.indy.fr in Chromium, or set INDY_COOKIE to the\n" +
+        "value of the __Http-sid cookie of a logged-in session.\n" +
+        "INDY_TOKEN (Firebase ID token)\n" +
         "only works while the enableClientInternalAuthSession flag is off."
     );
   }
@@ -351,7 +364,7 @@ async function main(argv: string[]) {
 main(Bun.argv.slice(2)).catch((error: unknown) => {
   if (error instanceof IndyError && error.status === 401) {
     console.error(
-      "401 Unauthorized — refresh INDY_COOKIE from a logged-in browser session (see README)."
+      "401 Unauthorized — log in again on app.indy.fr in the browser (see README)."
     );
   } else {
     console.error(error instanceof Error ? error.message : String(error));
