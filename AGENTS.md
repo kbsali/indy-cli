@@ -26,6 +26,7 @@ then `bunx oxlint`. CI runs `bun test` and `bun run check`.
 - `src/cli.ts`: `node:util` `parseArgs`, one `case` per command in `main`. The
   `USAGE` string is the help text: update it, and the README "Commands"
   section, with every command or flag change.
+- `src/browser-cookie.ts`: reads one cookie from the Chromium/Chrome store.
 - `src/format.ts`: TSV (tabs, decimal commas) and aligned text.
 
 ## Gotchas
@@ -34,8 +35,11 @@ then `bunx oxlint`. CI runs `bun test` and `bun run check`.
   `apply-receipt` modify the user's accounting data. Never run them to test.
   Read-only commands (`list`, `get`, `receipts`, `unpaired`, `filters`,
   `vat-config`) only when asked.
-- Auth is the HttpOnly cookie `__Http-sid` (`INDY_COOKIE`, else
-  `keyring get indy-compta cookie`). A Firebase token alone gets 401.
+- Auth is the HttpOnly cookie `__Http-sid`: `INDY_COOKIE`, else the Chromium
+  cookie store (`src/browser-cookie.ts`: Linux, libsecret, AES-128-CBC,
+  SHA-256 host prefix from meta version 24), else
+  `keyring get indy-compta cookie`. A Firebase token alone gets 401. Never
+  print or log a cookie value.
 - Units: `tvaRate` and `vatRate[]` in basis points (2000 = 20 %); payload
   amounts are signed cents (expenses negative); `amountFrom`/`amountTo` list
   filters are euros. Page size is fixed at 30.

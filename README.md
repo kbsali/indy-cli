@@ -18,14 +18,21 @@ Indy runs with `enableClientInternalAuthSession: true`: the API authenticates wi
 session.
 
 ```mermaid
-flowchart LR
-    A[Logged-in tab on app.indy.fr] --> B["DevTools → Application → Cookies<br/>copy the HttpOnly session cookie"]
-    B --> C["export INDY_COOKIE='<value>'<br/>or keyring set indy-compta cookie"]
-    C --> D[indy list / upload / vat]
-    D -- 401 --> B
+flowchart TB
+    A[Log in on app.indy.fr in Chromium] --> B["indy reads __Http-sid from ~/.config/chromium/Default/Cookies<br/>key: 'Chromium Safe Storage' in the keyring"]
+    B --> C[indy list / upload / vat]
+    C -- 401 --> A
 ```
 
-The cookie is named **`__Http-sid`**. Grab its value in DevTools →
+The cookie is named **`__Http-sid`**. By default the CLI reads it from the
+Chromium cookie store (Linux only), decrypted with the `Chromium Safe Storage`
+password read with `secret-tool`: logging in in the browser is enough.
+`INDY_BROWSER=chrome` reads Google Chrome instead, `INDY_PROFILE=Profile 1`
+another profile.
+
+Lookup order: `INDY_COOKIE`, then the browser store, then the OS keyring.
+
+To set it by hand, grab its value in DevTools →
 _Application_ → _Storage_ → _Cookies_ → `https://app.indy.fr` → `__Http-sid`:
 
 ```bash
@@ -41,8 +48,8 @@ Persist it in the OS keyring instead of the environment if you prefer:
 keyring set indy-compta cookie      # the CLI reads it when INDY_COOKIE is unset
 ```
 
-The session is not eternal: on `401` refresh the cookie the same way. Signing out in the
-browser invalidates it.
+The session is not eternal: on `401` log in again in the browser (or refresh a hand-set
+cookie). Signing out in the browser invalidates it.
 
 `INDY_TOKEN` (Firebase ID token, IndexedDB `firebaseLocalStorageDb` →
 `stsTokenManager.accessToken`) is still supported and sent as `Authorization: Bearer`, but
