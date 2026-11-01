@@ -41,6 +41,8 @@ export type Transaction = {
   amountInCents: number;
   isVerified: boolean;
   isDeleted: boolean;
+  /** Not in list responses captured so far; present on some detail payloads. */
+  annotation?: string;
   receiptIds?: string[];
   subdivisions: Subdivision[];
 };
@@ -120,6 +122,16 @@ export class IndyError extends Error {
     super(`${method} ${path} -> ${status} ${body.slice(0, 300)}`);
     this.name = "IndyError";
   }
+}
+
+/** A 4xx other than 401: the by-id route has nothing, scanning may find it. */
+export function isScanFallback(error: unknown): boolean {
+  return (
+    error instanceof IndyError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 401
+  );
 }
 
 type RequestOptions = {
@@ -216,21 +228,31 @@ export class IndyClient {
     );
   }
 
-  /** Walks every page (30 per page) of a filtered list. */
+  /**
+   * Walks every page (30 per page) of a filtered list. Offset paging: a row
+   * added or deleted mid-walk shifts the pages, so rows are deduplicated by id.
+   * ponytail: a row can still be skipped; a date-bounded filter avoids it.
+   */
   async listAllTransactions(params: ListParams = {}): Promise<Transaction[]> {
-    const all: Transaction[] = [];
-    for (let page = 1; ; page++) {
+    const byId = new Map<string, Transaction>();
+    for (let page = 1, seen = 0; ; page++) {
       const { transactions, nbTransactions } = await this.listTransactions(
         params,
         page
       );
-      all.push(...transactions);
-      if (transactions.length < PAGE_SIZE || all.length >= nbTransactions)
-        return all;
+      for (const transaction of transactions)
+        byId.set(transaction._id, transaction);
+      seen += transactions.length;
+      if (transactions.length < PAGE_SIZE || seen >= nbTransactions)
+        return [...byId.values()];
     }
   }
 
-  /** No id-filtered endpoint exists: try the accounting route, else scan the list. */
+  /**
+   * No id-filtered endpoint exists: try the accounting route, else scan the
+   * list. Only a 4xx other than 401 falls through to the scan: a 401 or 5xx
+   * would fail the same way, after up to hundreds of requests.
+   */
   async getTransaction(
     transactionId: string,
     params: ListParams = {}
@@ -243,15 +265,19 @@ export class IndyClient {
         "transaction" in result ? result.transaction : (result as Transaction);
       if (transaction?._id) return transaction;
     } catch (error) {
-      if (!(error instanceof IndyError)) throw error;
+      if (!isScanFallback(error)) throw error;
     }
-    for (let page = 1; ; page++) {
-      const { transactions } = await this.listTransactions(params, page);
+    for (let page = 1, seen = 0; ; page++) {
+      const { transactions, nbTransactions } = await this.listTransactions(
+        params,
+        page
+      );
       const found = transactions.find(
         (transaction) => transaction._id === transactionId
       );
       if (found) return found;
-      if (transactions.length < PAGE_SIZE) {
+      seen += transactions.length;
+      if (transactions.length < PAGE_SIZE || seen >= nbTransactions) {
         throw new Error(`Transaction ${transactionId} not found`);
       }
     }
@@ -352,10 +378,8 @@ export class IndyClient {
     subdivisions: SubdivisionInput[]
   ): Promise<unknown> {
     return this.request("POST", `/transactions/manual/${transactionId}`, {
-      body: {
-        info: { annotation: "", isVerified: false, ...info },
-        subdivisions,
-      },
+      // No annotation default: sending "" would erase the current one.
+      body: { info: { isVerified: false, ...info }, subdivisions },
     });
   }
 }

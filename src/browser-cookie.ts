@@ -27,7 +27,13 @@ export function decryptValue(
 ): string {
   const buffer = Buffer.from(encrypted);
   const prefix = buffer.subarray(0, 3).toString();
-  if (prefix !== "v10" && prefix !== "v11") return buffer.toString();
+  if (prefix !== "v10" && prefix !== "v11") {
+    // A newer scheme (v12, ...) would otherwise come back as garbage text.
+    if (/^v\d\d$/.test(prefix)) {
+      throw new Error(`Unsupported cookie encryption "${prefix}"`);
+    }
+    return buffer.toString();
+  }
   const decipher = createDecipheriv(
     "aes-128-cbc",
     keys[prefix],
@@ -83,12 +89,15 @@ export function browserCookie(
         .get() as { value: string } | null;
       const row = db
         .query(
-          "SELECT encrypted_value FROM cookies WHERE host_key IN (?1, ?2) AND name = ?3 ORDER BY expires_utc DESC"
+          "SELECT value, encrypted_value FROM cookies WHERE host_key IN (?1, ?2) AND name = ?3 ORDER BY expires_utc DESC"
         )
         .get(host, `.${host}`, name) as {
+        value: string;
         encrypted_value: Uint8Array;
       } | null;
       if (!row) return undefined;
+      // Unencrypted cookies keep their value in `value`, encrypted_value empty.
+      if (row.encrypted_value.length === 0) return row.value || undefined;
       return decryptValue(row.encrypted_value, keys, Number(meta?.value ?? 0));
     } finally {
       db.close();

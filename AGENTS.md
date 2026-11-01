@@ -9,7 +9,7 @@ commands) and `indy-web-api.md` (endpoints, payloads, gotchas) before touching
 
 ```bash
 bun install
-bun test                  # src/client.test.ts: pure helpers, no network
+bun test                  # src/client.test.ts: helpers + client with stubbed fetch, no network
 bun run check             # oxlint && bun fmt --check && bun check
 bun run fix               # oxlint --fix && bun fmt
 bun run src/cli.ts --help
@@ -28,6 +28,9 @@ then `bunx oxlint`. CI runs `bun test` and `bun run check`.
   section, with every command or flag change.
 - `src/browser-cookie.ts`: reads one cookie from the Chromium/Chrome store.
 - `src/format.ts`: TSV (tabs, decimal commas) and aligned text.
+- `docs/state-machines.md`: the implicit state machines (auth chain, receipts,
+  VAT, `split` fields, lookup, paging, flag pairs). Update it with any change
+  to them.
 
 ## Gotchas
 
