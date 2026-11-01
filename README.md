@@ -121,7 +121,12 @@ Notes:
 - **Rates are basis points**: `2000` = 20 %, `1000` = 10 %, `550` = 5,5 %, `0` = exonéré.
 - **Amounts are signed euros** on the command line (expenses negative), converted to cents
   for the API. `split` refuses to send lines that do not sum to the transaction amount
-  unless `--force` is passed.
+  unless `--force` is passed. It keeps the current annotation and verified state unless
+  `--annotation` or `--verified` / `--unverified` is given, and finds deleted transactions too.
+- Contradicting flags (`--income --expense`, `--json --tsv`, ...) are rejected. `--tsv` only
+  applies to `list` and `get`.
+- `upload` with several files checks they all exist first. If one upload fails, the error
+  says how many went through and prints the command for the remaining files.
 - TSV output (tab-separated, decimal commas) opens as a table in Sheets, DuckDB or Zed.
 - `--all` walks every page (30 transactions per request).
 

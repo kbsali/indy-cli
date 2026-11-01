@@ -51,8 +51,9 @@ vat options:
 
 split options:
   --line <amount:account[:rate]>   repeatable, amounts in euros, signed
-  --description <text>  --date <YYYY-MM-DD>  --amount <euros>  --annotation <text>
-  --verified            mark the transaction as verified
+  --description <text>  --date <YYYY-MM-DD>  --amount <euros>
+  --annotation <text>   default: the current annotation is kept
+  --verified | --unverified   set "transaction vérifiée" (default: unchanged)
   --force               skip the "subdivisions must sum to the amount" check
 
 Auth: the __Http-sid cookie of the browser session logged in on app.indy.fr,
@@ -97,7 +98,7 @@ const options = {
   help: { type: "boolean", short: "h" },
 } as const;
 
-type Flags = Partial<{
+export type Flags = Partial<{
   [K in keyof typeof options]: (typeof options)[K] extends { multiple: true }
     ? string[]
     : (typeof options)[K] extends { type: "boolean" }
@@ -116,16 +117,26 @@ function fromKeyring(key: string): string | undefined {
   return undefined;
 }
 
-function resolveCredentials(): Credentials {
-  const cookie =
-    process.env.INDY_COOKIE?.trim() ||
-    browserCookie(
+/** A broken cookie store must not hide the keyring and INDY_TOKEN fallbacks. */
+function fromBrowser(): string | undefined {
+  try {
+    return browserCookie(
       "app.indy.fr",
       "__Http-sid",
       (process.env.INDY_BROWSER ?? "chromium") as Browser,
       process.env.INDY_PROFILE
-    ) ||
-    fromKeyring("cookie");
+    );
+  } catch (error) {
+    console.error(
+      `Browser cookie store skipped: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return undefined;
+  }
+}
+
+function resolveCredentials(): Credentials {
+  const cookie =
+    process.env.INDY_COOKIE?.trim() || fromBrowser() || fromKeyring("cookie");
   const token = process.env.INDY_TOKEN?.trim() || fromKeyring("token");
   if (!cookie && !token) {
     throw new Error(
@@ -138,8 +149,25 @@ function resolveCredentials(): Credentials {
   return { cookie, token, organisationId: process.env.INDY_ORG_ID };
 }
 
-function listParams(flags: Flags): ListParams {
+/** A tri-state stored as 2 flags: both given is a mistake, not "last one wins". */
+export function exclusive(
+  flags: Flags,
+  yes: keyof Flags,
+  no: keyof Flags
+): boolean | undefined {
+  if (flags[yes] && flags[no]) {
+    throw new Error(`--${yes} and --${no} are mutually exclusive`);
+  }
+  if (flags[yes]) return true;
+  if (flags[no]) return false;
+  return undefined;
+}
+
+export function listParams(flags: Flags): ListParams {
   const params: ListParams = {};
+  const hasReceipt = exclusive(flags, "with-receipt", "no-receipt");
+  const income = exclusive(flags, "income", "expense");
+  const verified = exclusive(flags, "verified", "unverified");
   if (flags.search) params.search = flags.search;
   if (flags.category?.length) params.categories = flags.category;
   if (flags.from) params.dateFrom = flags.from;
@@ -150,12 +178,10 @@ function listParams(flags: Flags): ListParams {
     );
   if (flags["amount-to"])
     params.amountTo = Number.parseFloat(flags["amount-to"].replace(",", "."));
-  if (flags["no-receipt"]) params.hasReceipt = false;
-  if (flags["with-receipt"]) params.hasReceipt = true;
-  if (flags.income) params.displayIngressOutflow = "ingress";
-  if (flags.expense) params.displayIngressOutflow = "outflow";
-  if (flags.verified) params.verified = "yes";
-  if (flags.unverified) params.verified = "no";
+  if (hasReceipt !== undefined) params.hasReceipt = hasReceipt;
+  if (income !== undefined)
+    params.displayIngressOutflow = income ? "ingress" : "outflow";
+  if (verified !== undefined) params.verified = verified ? "yes" : "no";
   if (flags.deleted) params.deleted = flags.deleted as ListParams["deleted"];
   if (flags["vat-rate"]?.length)
     params.vatRate = flags["vat-rate"].map((r) => Number.parseInt(r, 10));
@@ -186,6 +212,13 @@ async function main(argv: string[]) {
   if (!command || flags.help) {
     console.log(USAGE);
     return;
+  }
+
+  if (flags.json && flags.tsv) {
+    throw new Error("--json and --tsv are mutually exclusive");
+  }
+  if (flags.tsv && command !== "list" && command !== "get") {
+    throw new Error(`--tsv only applies to list and get, not ${command}`);
   }
 
   const client = new IndyClient(resolveCredentials());
@@ -234,11 +267,25 @@ async function main(argv: string[]) {
       for (const path of paths) {
         const blob = Bun.file(path);
         if (!(await blob.exists())) throw new Error(`File not found: ${path}`);
+      }
+      for (const [index, path] of paths.entries()) {
+        const blob = Bun.file(path);
         const file = new File([await blob.arrayBuffer()], basename(path), {
           type: blob.type || "application/octet-stream",
         });
-        const result = await client.uploadReceipt(transactionId, file);
-        console.log(JSON.stringify(result, null, 2));
+        try {
+          const result = await client.uploadReceipt(transactionId, file);
+          console.log(JSON.stringify(result, null, 2));
+        } catch (error) {
+          // Earlier files are attached already: say so, and what to rerun.
+          const message =
+            error instanceof Error ? error.message : String(error);
+          throw new Error(
+            `Upload of ${path} failed (${index}/${paths.length} uploaded): ${message}\n` +
+              `Rerun with the remaining files: indy upload ${transactionId} ${paths.slice(index).join(" ")}`,
+            { cause: error }
+          );
+        }
       }
       return;
     }
@@ -294,7 +341,9 @@ async function main(argv: string[]) {
       }
       let subdivisionId = flags.subdivision;
       if (!subdivisionId) {
-        const transaction = await client.getTransaction(transactionId);
+        const transaction = await client.getTransaction(transactionId, {
+          deleted: "both",
+        });
         const modifiable = transaction.subdivisions.filter(
           (s) => s.modifiable !== false
         );
@@ -322,7 +371,10 @@ async function main(argv: string[]) {
         );
       }
       const subdivisions: SubdivisionInput[] = flags.line.map(parseSubdivision);
-      const current = await client.getTransaction(transactionId);
+      const isVerified = exclusive(flags, "verified", "unverified");
+      const current = await client.getTransaction(transactionId, {
+        deleted: "both",
+      });
       const amountInCents = flags.amount
         ? toCents(flags.amount)
         : current.amountInCents;
@@ -338,8 +390,9 @@ async function main(argv: string[]) {
           description: flags.description ?? current.description,
           amountInCents,
           date: (flags.date ?? current.date).slice(0, 10),
-          annotation: flags.annotation ?? "",
-          isVerified: flags.verified ?? current.isVerified,
+          // Unknown current annotation: omitted, so it is not erased.
+          annotation: flags.annotation ?? current.annotation,
+          isVerified: isVerified ?? current.isVerified,
         },
         subdivisions
       );
@@ -361,13 +414,14 @@ async function main(argv: string[]) {
   }
 }
 
-main(Bun.argv.slice(2)).catch((error: unknown) => {
-  if (error instanceof IndyError && error.status === 401) {
-    console.error(
-      "401 Unauthorized — log in again on app.indy.fr in the browser (see README)."
-    );
-  } else {
-    console.error(error instanceof Error ? error.message : String(error));
-  }
-  process.exit(1);
-});
+if (import.meta.main)
+  main(Bun.argv.slice(2)).catch((error: unknown) => {
+    if (error instanceof IndyError && error.status === 401) {
+      console.error(
+        "401 Unauthorized — log in again on app.indy.fr in the browser (see README)."
+      );
+    } else {
+      console.error(error instanceof Error ? error.message : String(error));
+    }
+    process.exit(1);
+  });
