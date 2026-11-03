@@ -122,7 +122,7 @@ The summary endpoint uses a **different (snake-ish) filter body**, not the list 
 | GET | `/api/receipts/transaction` | `?transactionId=` (or `pendingTransactionId` + `pendingTransactionOrigin`) | receipts attached to a transaction |
 | POST | `/api/receipts` | `multipart/form-data` field `file`; query `transactionId` (or the pending pair) | **upload + attach in one call** |
 | PUT | `/api/receipts/:receiptId/transaction` | `{ transactionId, applyReceiptData }` | attach an existing receipt |
-| POST | `/api/receipts/:receiptId/detach` | — | detach, keep the receipt |
+| POST | `/api/receipts/:receiptId/detach` | `{ transactionId }` (or the pending pair); an empty body is a 400 | detach, keep the receipt |
 | DELETE | `/api/receipts/:receiptId` | — | delete the receipt |
 | PUT | `/api/receipts/:receiptId/apply-receipt-data-to-transaction` | — | push OCR amount/date/VAT onto the transaction |
 | GET | `/api/receipts/unpaired` | — | receipts with no transaction |

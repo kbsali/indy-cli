@@ -325,8 +325,11 @@ export class IndyClient {
     });
   }
 
-  detachReceipt(receiptId: string): Promise<unknown> {
-    return this.request("POST", `/receipts/${receiptId}/detach`);
+  /** The API rejects an empty body: it needs the transaction the receipt leaves. */
+  detachReceipt(receiptId: string, transactionId: string): Promise<unknown> {
+    return this.request("POST", `/receipts/${receiptId}/detach`, {
+      body: { transactionId },
+    });
   }
 
   deleteReceipt(receiptId: string): Promise<unknown> {
