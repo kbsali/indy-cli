@@ -24,7 +24,7 @@ Commands:
   receipts <transactionId>      List receipts attached to a transaction
   upload <transactionId> <file...>   Upload receipt(s) and attach them
   attach <receiptId> <transactionId> Attach an existing receipt
-  detach <receiptId>            Detach a receipt from its transaction
+  detach <receiptId> <transactionId> Detach a receipt from its transaction
   delete-receipt <receiptId>    Delete a receipt
   apply-receipt <receiptId>     Apply the receipt OCR data (amount/date/VAT)
   unpaired                      Receipts with no transaction
@@ -304,10 +304,15 @@ async function main(argv: string[]) {
     }
 
     case "detach": {
-      const [receiptId] = args;
-      if (!receiptId) throw new Error("Usage: indy detach <receiptId>");
+      const [receiptId, transactionId] = args;
+      if (!receiptId || !transactionId)
+        throw new Error("Usage: indy detach <receiptId> <transactionId>");
       return console.log(
-        JSON.stringify(await client.detachReceipt(receiptId), null, 2)
+        JSON.stringify(
+          await client.detachReceipt(receiptId, transactionId),
+          null,
+          2
+        )
       );
     }
 

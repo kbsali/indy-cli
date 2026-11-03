@@ -101,7 +101,7 @@ indy upload <transactionId> ~/factures/2026-03-free.pdf
 
 # Receipt housekeeping
 indy receipts <transactionId>
-indy detach <receiptId>            # unlink a wrongly suggested receipt
+indy detach <receiptId> <transactionId> # unlink a wrongly suggested receipt
 indy apply-receipt <receiptId>     # push the OCR amount/date/VAT onto the transaction
 indy unpaired
 
